@@ -30,137 +30,32 @@ v 4.17: Minor tweaks
 v 4.18: Use pickle to save the stack values and redo stack to the registry.
 v 5.0 : Moved def's with no class items into external file.
 v 5.01: Changed join to f-strings
+v 5.02: Save settings and stack values JSON rather than registry.
 
 PYCharm packages etc.
-Python 3.12
+Python 3.14
 customtkinter 5.2.2
-darkdetect 0.8.0 (via customtkinter)
-ExifRead 3.0.0
-Fraction 2.2.0
-packaging 25.0
-pillow 11.0.0
-pip 23.2.1
-pywin32 308 (installing 310 causes issues)
-screeninfo 0.8.1
-WMI 1.5.1
+    darkdetect 0.8.0 (via customtkinter)
+    packaging 26.0 (via customtkinter)
+fraction 2.2.0
+pillow 12.1.1
+pip 26.0.1
+pywin32 311 (gives win32)
 ==========================================================================
-
-Help.
-============
-For help, we use the docstring.
-It assumes the first line, with the triple double quote, has a single
-line description, then a blank line and then the help text.
-The help text is followed by a blank line and then the Parameters and
-Returns elements.
-Help only displays the text between the first blank line and the
-text prior to the blank line prior to the Parameters text.
-Blocks of 4 spaces are also replaced with a null string, this helps
-to reduce the margin on the left of the displayed text. If you want
-to keep multiple spaces, use non-breaking spaces.
-
 
 Things to add.
 ==============
 
-Info stuff.
-===========
-  TKinter 8.5 Reference
-    https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/index.html
-  Python Language Reference:
-    https://docs.python.org/3/reference/index.html# reference-index
-  Tk winfo:
-    https://www.tcl.tk/man/tcl8.6/TkCmd/winfo.html
-  Ttk info:
-    https://docs.python.org/3/library/tkinter.ttk.html
-  Customtkinter
-    https://customtkinter.tomschimansky.com/
-  sys info:
-    https://docs.python.org/3/library/sys.html
-  Key Symbols:
-    https://www.tcl.tk/man/tcl8.6/TkCmd/keysyms.html
-  Data Types:
-    https://phoenixnap.com/kb/python-data-types
-  Cursors:
-    https://www.tcl.tk/man/tcl8.4/TkCmd/cursors.html
-  ctypes:
-    MessageBoxExW:
-     https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messageboxexw
-    MessageBox:
-     https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox
-  Unicode Characters:
-    https://en.wikipedia.org/wiki/List_of_Unicode_characters
-      \N{SUPERSCRIPT THREE}
-      pi = \u03C0
-      tau = \u03c0
-      degree = \u00b0
-      middle dot = \u00b7
-      mu = \u03BC
-      non-breaking space = \u00A0
-      check mark = \u2713
-      laquo = \u00AB
-      raquo = \u00BB
-      \u23F4
-      \u23F5
-      \u0582 = fraction separator
-      \u00B2 = superscript 2
-      \u00B3 = superscript 3
-      \u00B7 = Middle Dot
-      \u00B9 = superscript 1
-      \u2080 -> \u2089 = superscript 0 to 9
-
-       https://www.tcl.tk/man/tcl8.6/TkCmd/keysyms.htm
-
-  Virtual Keycodes
-      https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-  Add a table
-    tksheet
-
-Case:
-=====
-Snake Case:
-    variables, method names, filenames
-    number_of_donuts = 34
-Screaming Snake Case:
-    constants
-    NUMBER_OF_DONUTS = 34
-Kebab Case:
-    URL
-    number-of-donuts = 34
-Camel Case:
-    Java, JavaScript, TypeScript
-    numberOfDonuts = 34
-Pascal Case:
-    Java, JavaScript, TypeScript
-    NumberOfDonuts = 34
-
-
-The Google Python Style Guide has the following convention:
-    module_name
-    package_name
-    ClassName
-    method_name
-    ExceptionName
-    function_name
-    GLOBAL_CONSTANT_NAME
-    global_var_name
-    instance_var_name
-    function_parameter_name
-    local_var_name.
-
-A similar naming scheme should be applied to a CLASS_CONSTANT_NAME
 '''
-from os import getcwd, path
-from os.path import realpath, dirname
-from sys import version, version_info, platform, argv, _getframe, getsizeof, modules
-from winreg import (OpenKey, QueryValueEx, CloseKey, CreateKeyEx, SetValueEx,
-                    HKEY_CURRENT_USER, REG_SZ, REG_BINARY, KEY_WRITE)
-from win32 import win32api
+library_names: str = ''
+from os import getcwd, path, makedirs
+from os.path import realpath, dirname, abspath
+from sys import version, version_info, argv
+import platform
 from inspect import currentframe
 from re import split
-import pickle
+import json
 from typing import Never, Any
-from time import sleep
-# from timeit import default_timer
 from random import randint, seed
 from webbrowser import open_new
 from getpass import getuser
@@ -176,46 +71,45 @@ from cmath import (sin as c_sin, sinh as c_sinh, asin as c_asin, asinh as c_asin
                    cos as c_cos, cosh as c_cosh, acos as c_acos, acosh as c_acosh,
                    tan as c_tan, tanh as c_tanh, atan as c_atan, atanh as c_atanh,
                    log as c_log, exp as c_exp)
-from fraction import Fraction
-from PIL import Image #  pip install pillow
-from tkinter import Menu, IntVar, StringVar, LEFT, RIGHT, INSERT, GROOVE, RAISED, SUNKEN
-from tkinter.ttk import Spinbox, Separator, Combobox
-from customtkinter import (CTk, CTkButton, CTkFrame,
-                           CTkLabel, CTkToplevel, CTkTextbox,
-                           CTkSlider, CTkRadioButton, CTkOptionMenu,
-                           CTkTabview, CTkFont, CTkEntry)
-
-#  Stuff I've done # 
+from tkinter import Menu, IntVar, StringVar, messagebox, LEFT, RIGHT, INSERT
+from tkinter.ttk import Spinbox
+try:
+    from fraction import Fraction
+except:
+    library_names += 'fraction\n'
+try:
+    from customtkinter import (CTk, CTkButton, CTkFrame,
+                               CTkLabel, CTkToplevel, CTkTextbox,
+                               CTkSlider, CTkRadioButton, CTkInputDialog,
+                               CTkTabview, CTkFont, CTkEntry)
+except:
+    library_names += 'customtkinter\n'
+try:
+    from keyboard import send as send_key
+except:
+    library_names += 'keyboard\n'
+from my_functions import (float_to_dms, float_to_word,# type: ignore
+                          roman_to_integer, integer_to_roman,
+                          sexagesimal_to_float, float_to_sexagesimal,
+                          combine_uom, eng_format, retrieve_object)
+from popupmessage import PopupMessage # type: ignore
+if library_names:
+    messagebox.showerror(title='Please pip install the following.', message=library_names)
+    exit()
 # 
-from my_functions import (float_to_dms, integer_to_roman, float_to_word,
-                          roman_to_integer, float_to_sexagesimal, sexagesimal_to_float,
-                          combine_uom, eng_format, retrieve_object, get_tag_config)
-from TextWidgetLink import TextWidgetLink
-from TextWidgetHighlight import TextWidgetHighlight
-from PopupMessage import PopupMessage
-
-#  Constants
+# #  Constants
 # 
 BUTTON_WIDTH: Final [int] = 80
 BUTTON_HEIGHT: Final [int] = 30
 ENTRY_WIDTH: Final [int] = BUTTON_WIDTH * 6 + 50
-MENU_FONT: Final [tuple] = ('Code New Roman', 12) # -17)
+MENU_FONT: Final [tuple] = ('Code New Roman', 12)
 
 CALC_VERSION: Final [int] = 5
-CALC_SUBVERSION: Final [int] = 0
+CALC_SUBVERSION: Final [int] = 2
 PYTHON_MAJOR_VERSION: Final [int] = 3
 PYTHON_MINOR_VERSION: Final [int] = 10
 
 STACK_DEPTH: Final [int] = 10
-
-#  Colours defined by stdout.shell keywords
-ORANGE: Final = 'KEYWORD'
-GREEN: Final = 'STRING'
-BLACK: Final = 'SYNC'
-PURPLE: Final = 'BUILTIN'
-RED: Final = 'COMMENT'
-BLUE: Final = 'DEFINITION'
-BLACK_ON_RED: Final = 'ERROR'
 
 # 
 #  Extensions to existing classes.
@@ -307,8 +201,7 @@ class Helping:
                           '\nVariables:\n'
                           'Variables can be used in equations. Registers R0 thru R5 can also '
                           'be used, they MUST be in upper case, R1 NOT r1. '
-                          'To remove a variable, assign a null string to it, e.g. B=\'\'\n'
-                           'last use of this')
+                          'To remove a variable, assign a null string to it, e.g. B=\'\'\n')
 
     def help_about(self) -> None:
         '''Shows the about message.'''
@@ -317,7 +210,7 @@ class Helping:
     def show_help(self, help_topic: str = '') -> None:
         '''Show the help for the button clicked.'''
 
-        def format_doc_string(docstring: str) -> str:
+        def format_doc_string(docstring: str, other_parm: int| float | str = '') -> str:
             '''Extracts part of the doc string for Help.
 
             Skips the first line, assumes it is the short description, then
@@ -345,7 +238,7 @@ class Helping:
             end_location = help_text.find('Parameters', start_location + 1) - 2
             if help_text[end_location] == '\n':
                 end_location -= 1
-            return help_text[start_location:end_location]
+            return help_text[start_location:end_location].replace('{other_parm}', str(other_parm))
 
         if help_topic is None:
             match_text = ''
@@ -433,15 +326,15 @@ class Helping:
             case 'log':
                 help_text = format_doc_string(app.scientific.my_log_10.__doc__)
             case 'power10':
-                help_text = format_doc_string(app.scientific.my_power_10.__doc__)
+                help_text = format_doc_string(app.scientific.my_power_val.__doc__, 10)
             case 'ln':
                 help_text = format_doc_string(app.scientific.my_log_e.__doc__)
             case 'exp':
-                help_text = format_doc_string(app.scientific.my_power_e.__doc__)
+                help_text = format_doc_string(app.scientific.my_power_val.__doc__, 'e')
             case 'ln2':
                 help_text = format_doc_string(app.scientific.my_log_2.__doc__)
             case 'power2':
-                help_text = format_doc_string(app.scientific.my_power_2.__doc__)
+                help_text = format_doc_string(app.scientific.my_power_val.__doc__, 2)
             case 'rad':
                 help_text = format_doc_string(app.scientific.my_radians.__doc__)
             case 'sin':
@@ -548,42 +441,6 @@ class Helping:
                 help_text = f'No Help for {match_text} yet.'
         popup_message.show(title=help_topic, message=help_text, multi_line=multiline, use_text_box = usetextbox,
                            m_height=30, m_width=30, alignment='l', wait=wait, font=('Code New Roman', 13))
-        if wait is False and (tb := popup_message.get_textbox()) is not None:
-                text_widget_link.add(text_widget=tb, the_text='Complex Numbers:', highlight_name='Complex',
-                                 new_text='Complex Numbers',
-                                 popup_fg='red', popup_bg='lightgreen', popup_border='purple',
-                                 the_link='https://en.wikipedia.org/wiki/Complex_number')
-                text_widget_link.add(text_widget=tb, the_text='Base Numbers:', highlight_name='Base', bg_color='gold',
-                                 the_link='https://en.wikipedia.org/wiki/Radix')
-                text_widget_link.add(text_widget=tb, the_text='Roman Numbers:', highlight_name='Roman',
-                                 the_link='https://en.wikipedia.org/wiki/Roman_numerals')
-                text_widget_link.add(text_widget=tb, the_text='3.1415927', highlight_name='pi',
-                                 the_link='https://en.wikipedia.org/wiki/Pi')
-                text_widget_link.add(text_widget=tb, the_text='[Email]', new_text='Email',
-                                 popup_font=('Courier New', 18), show_url=False,
-                                 highlight_name='email', the_link='mailto:kevin.glentworth@gmail.com')
-                text_widget_highlight.add(text_widget=tb, the_text='Comments:', highlight_name='0')
-                text_widget_highlight.add(text_widget=tb, the_text='Units:', highlight_name='0')
-                text_widget_highlight.add(text_widget=tb, the_text='Equations/Assignments:', highlight_name='0')
-                text_widget_highlight.add(text_widget=tb, the_text='Variables:', highlight_name='0')
-                text_widget_highlight.add(text_widget=tb, highlight_name='0', fg_color='blue', bg_color='lightyellow',
-                                      underline=True, underlinefg='red', italic=True)
-                text_widget_highlight.add(text_widget=tb, highlight_name='and', the_text='and', new_text='as well as',
-                                      qty=1, fg_color='yellow',bg_color='green', bold=True, relief=RAISED)
-                text_widget_highlight.add(text_widget=tb, highlight_name='number', the_text='number', fg_color='blue',
-                                      bg_color='lightblue', underline=False, relief=GROOVE)
-                text_widget_highlight.add(text_widget=tb, highlight_name='are', the_text='are',
-                                      fg_color='blue', bg_color='lightblue', underline=False, relief=SUNKEN, qty=2)
-                text_widget_highlight.add(text_widget=tb, highlight_name='enter', the_text='eNTer', superscript=True,
-                                      ignore_case=True, fg_color='orange')
-                text_widget_highlight.add(text_widget=tb, highlight_name='is', the_text='is', ignore_case=True,
-                                       subscript=True, offset=3, fg_color='blue', bg_color='yellow', alpha_adjacent=True)
-                app.after(5000, lambda: get_tag_config(tb))
-                text_widget_highlight.add(text_widget=tb, highlight_name='black_range', by_position=[22, 100, False], fg_color='black', bold=True)
-                app.after(1000, lambda: text_widget_highlight.add(text_widget=tb, highlight_name='green_range', by_position=[22, 200, True], fg_color='green', bold=True))
-                app.after(2000, lambda: text_widget_highlight.add(text_widget=tb, highlight_name='orange_range', by_position=[22, 300, False], fg_color='orange', bold=True))
-                app.after(3000, lambda: text_widget_highlight.add(text_widget=tb, highlight_name='red_range', by_position=[250, 350, None], fg_color='red', bold=False))
-
 
     def formulae_help(self) -> None:
         popup_message.show(title='Formul\u00e6', message='Formulae help.')
@@ -606,7 +463,7 @@ class Helping:
             try:
                 help_subject + 'window'.destroy()
             except:
-                pass
+                ...
             finally:
                 eval(f'app.helping.{help_subject}_help()')
         return 'break'  #  terminate event processing
@@ -614,7 +471,6 @@ class Helping:
     def some_stuff(self) -> None:
         '''Print various things.'''
         o_str = ''
-        o_str += f'I am a {first_bit.what_i_am}, running from {first_bit.my_file_path}\n'
         o_str += f'Me:{currentframe().f_code.co_name}:\n'
         o_str += f'Previous:{currentframe().f_back.f_code.co_name}:\n'
         o_str += f'Version:{version}\n'
@@ -692,15 +548,17 @@ class Helping:
 
 class Scientific:
     '''Scientific calculator'''
-    def __init__(self, my_frame):
+    def __init__(self, my_frame: CTkFrame):
         self.my_frame = my_frame
         self.arc_status: str = ''
         self.hyp_status: str = ''
         self.radians_conv: int = 1
-        self.stack_values: list[float, float, str, {}] = []
-        self.redo_stack: list[list[float, float, str, {}], str] = []
+        self.stack_values: list[float, float, str, dict] = [0.0, 0.0, '', {}]
+        self.redo_stack: list[list[float, float, str, dict], str] = []
         self.redo_counter: int = 0
-        self.settings_dict: dict = {}
+        # self.settings_dict: dict = {}
+        self.equations: dict = []
+        self.created_vars: dict = []
         self.not_permitted: list[str] = ['e', 'pi', 'tau',
                                          'log', 'log10', 'log2',
                                          'sin', 'cos', 'tan', 'cas',
@@ -711,64 +569,54 @@ class Scientific:
                                          'rtop', 'ptor',
                                          'fact', 'perm', 'comb',
                                          'R0', 'R1', 'R2', 'R3', 'R4', 'R5']
+
+        self.display_format: dict = {0: 'Scientific',
+                                     1: 'Engineering',
+                                     2: 'Base',
+                                     3: 'Suffix',
+                                     4: 'Roman',
+                                     5: 'Word',
+                                     6: 'Fraction',
+                                     7: '\u00b0 \' "',
+                                     8: 'Sexagesimal'}
+        self.settings_dict: dict = {'significant_digits': 8,
+                                    'display_base': 10,
+                                    'format_type': self.DisplayFormat.FORMAT_SCI,
+                                    'screen_orientation': 'p',
+                                    'left': 100,
+                                    'top': 100}
         try:
-            my_key = OpenKey(HKEY_CURRENT_USER, r'Software\KevCalc\Scientific')
-            key_val = QueryValueEx(my_key, 'created_vars')
-            kv = pickle.loads(key_val[0])
-            self.created_vars: dict = kv.copy()
-            CloseKey(my_key)
+            with open('config/stack_values.json', 'r') as f:
+                self.stack_values = json.load(f)
+            with open('config/redo_stack.json', 'r') as f:
+                self.redo_stack = json.load(f)
+            with open('config/settings_dict.json', 'r') as f:
+                self.settings_dict = json.load(f)
+            with open('config/equations.json', 'r') as f:
+                self.equations = json.load(f)
+            with open('config/created_vars.json', 'r') as f:
+                self.created_vars = json.load(f)
         except:
-            self.created_vars: dict = {}
-        try:
-            my_key = OpenKey(HKEY_CURRENT_USER, r'Software\KevCalc\Scientific')
-        except:
-            my_key = None
-        if my_key is not None:
-            try:
-                key_val = QueryValueEx(my_key, 'stack_values')
-                kv = pickle.loads(key_val[0])
-                self.stack_values = kv.copy()
-            except:
-                self.stack_values.append([0.0, 0.0, '', {}])  #  [0]=real part, [1]=imaginary part, [2]=desc, [3]=units
-            try:
-                key_val = QueryValueEx(my_key, 'redo_stack')
-                kv = pickle.loads(key_val[0])
-                self.redo_stack = kv.copy()
-            except:
-                self.redo_stack = []
-            try:
-                key_val = QueryValueEx(my_key, 'settings_dict')
-                kv = pickle.loads(key_val[0])
-                self.settings_dict = kv.copy()
-            except:
-                self.settings_dict: dict = {'significant_digits': 8,
-                                            'display_base': 10,
-                                            'format_type': self.DisplayFormat.FORMAT_SCI,
-                                            'screen_orientation': 'p',
-                                            'left': 100,
-                                            'top': 100}
-                if app.winfo_screenheight() <= app.winfo_screenwidth():
-                    self.settings_dict['screen_orientation'] = 'r'
-            self.fmtString: str = '{:.' + str(self.settings_dict['significant_digits']) + 'f}'
-            try:
-                key_val = QueryValueEx(my_key, 'equations')
-                kv = pickle.loads(key_val[0])
-                self.equations = kv.copy()
-            except:
-                self.equations = []
+            ...
+        # if app.winfo_screenheight() <= app.winfo_screenwidth():
+        #     self.settings_dict['screen_orientation'] = 'r'
+        self.fmtString: str = '{:.' + str(self.settings_dict['significant_digits']) + 'f}'
+        # print(f'Settings: {self.settings_dict}')
+        # print(f'Equations: {self.equations}')
+        # print(f'Variables: {self.created_vars}')
         self.fracfmtproper: bool = True
         self.assign_r_vars()
-        self.hundreds = ['', 'one', 'two', 'three', 'four', 'five',
-                         'six', 'seven', 'eight', 'nine']
-        self.tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty',
-                     'seventy', 'eighty', 'ninety']
-        self.teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-                      'sixteen', 'seventeen', 'eighteen', 'nineteen']
-        self.units = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+        # self.hundreds = ['', 'one', 'two', 'three', 'four', 'five',
+        #                  'six', 'seven', 'eight', 'nine']
+        # self.tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty',
+        #              'seventy', 'eighty', 'ninety']
+        # self.teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+        #               'sixteen', 'seventeen', 'eighteen', 'nineteen']
+        # self.units = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
         self.base_digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
         #  fonts: Code New Roman, Space Mono
-        FONT_NAME = 'Code New Roman'
-        FONT_SIZE = 19
+        FONT_NAME = 'Space Mono'
+        FONT_SIZE = 18
         self.button_font: CTkFont = CTkFont(family=FONT_NAME, size=FONT_SIZE, weight='normal')
         self.eq_but_font: CTkFont = CTkFont(family=FONT_NAME, size=FONT_SIZE, weight='normal')
         self.text_font: CTkFont = CTkFont(family=FONT_NAME, size=FONT_SIZE, weight='normal')
@@ -901,14 +749,19 @@ class Scientific:
                                  fg_color='pink',
                                  bg_color='yellow',
                                  font=self.entry_font)
-        if my_key is not None:
-            try:
-                key_val = QueryValueEx(my_key, 'entry_box')
-                self.my_entry.insert(0, key_val[0])
-            except:
-                pass
-        if my_key is not None:
-            CloseKey(my_key)
+        try:
+            with open('config/my_entry.json', 'r') as f:
+                self.my_entry.insert(0, json.load(f))
+        except:
+            ...
+        # if my_key is not None:
+        #     try:
+        #         key_val = QueryValueEx(my_key, 'entry_box')
+        #         self.my_entry.insert(0, key_val[0])
+        #     except:
+        #         ...
+        # if my_key is not None:
+        #     CloseKey(my_key)
         self.my_entry.bind('<Return>', (lambda event: self.my_enter()))
         self.my_entry.bind('?', (lambda event: app.ctrl_left_click(e, 'Entry Box')))
         self.my_entry.bind('+', (lambda event: self.pressed_op('+', event)))
@@ -1048,7 +901,8 @@ class Scientific:
         self.bind_an_object(self.log_button, 'Log')
         self.power10_button = CTkButton(master=self.my_frame,
                                         text=' 10\u02E3 ',
-                                        command=self.my_power_10,
+#                                        command=self.my_power_10,
+                                        command=lambda: self.my_power_val(10),
                                         **button_config)
         self.bind_an_object(self.power10_button, 'Power10')
         self.ln_button = CTkButton(master=self.my_frame,
@@ -1058,7 +912,8 @@ class Scientific:
         self.bind_an_object(self.ln_button, 'ln')
         self.exp_button = CTkButton(master=self.my_frame,
                                     text=' e\u02E3 ',
-                                    command=self.my_power_e,
+#                                    command=self.my_power_e,
+                                    command=lambda: self.my_power_val('e'),
                                     **button_config)
         self.bind_an_object(self.exp_button, 'exp')
         self.ln2_button = CTkButton(master=self.my_frame,
@@ -1068,7 +923,8 @@ class Scientific:
         self.bind_an_object(self.ln2_button, 'ln2')
         self.exp2_button = CTkButton(master=self.my_frame,
                                      text=' 2\u02E3 ',
-                                     command=self.my_power_2,
+#                                     command=self.my_power_2,
+                                     command=lambda: self.my_power_val(2),
                                      **button_config)
         self.bind_an_object(self.exp2_button, 'power2')
 
@@ -1673,7 +1529,7 @@ class Scientific:
         app.update_idletasks()
         app.resizable(False, False)
         app.geometry(f'+{self.settings_dict['left']}+{self.settings_dict['top']}')
-        retrieve_object(app, 4000, 2000) # If offscreen, brings it back.
+        retrieve_object(app, 0.3, 0.3) # If offscreen, brings it back.
         self.settings_dict['screen_orientation'] = 'p'
         self.update_status_box()
 
@@ -2040,7 +1896,7 @@ class Scientific:
         popup_message.show(title='Confirm', message=c_str, yesno=True)
         response = popup_message.get()
         #print(f'response={response}')
-        if response == 'y':
+        if response == 'yes':
             l = len(self.stack_values)
             self.save_stack()
             match choice:
@@ -2124,31 +1980,7 @@ class Scientific:
 
     def update_status_box(self) -> None:
         '''Update the status box.'''
-        s = ''
-        match self.settings_dict['format_type']:
-            case self.DisplayFormat.FORMAT_SCI:
-                s = 'Scientific'
-            case self.DisplayFormat.FORMAT_ENG:
-                s = 'Engineering'
-            case self.DisplayFormat.FORMAT_BASE:
-                s = 'Base'
-            case self.DisplayFormat.FORMAT_SUFFIX:
-                s = 'Suffix'
-            case self.DisplayFormat.FORMAT_ROMAN:
-                s = 'Roman'
-            case self.DisplayFormat.FORMAT_WORD:
-                s = 'Words'
-            case self.DisplayFormat.FORMAT_FRACTION:
-                s = 'Fraction'
-            case self.DisplayFormat.FORMAT_DMS:
-                s = '\u00b0 \' "'
-            case self.DisplayFormat.FORMAT_SEXAGESIMAL:
-                s = 'Sexagesimal'
-            case _:
-                s = 'General'
-        # s = ''.join([s, '. ', str(self.settings_dict['significant_digits']), ' decimals',
-        #              '. base ', str(self.settings_dict['display_base']),
-        #              '. [', self.settings_dict['screen_orientation'], ']'])
+        s = self.display_format[self.settings_dict['format_type']]
         s = (f"{s}. "
              f"{str(self.settings_dict['significant_digits'])} decimals."
              f" base {str(self.settings_dict['display_base'])}. "
@@ -2222,7 +2054,7 @@ class Scientific:
                 s = 'R' + str(_1)
                 del globals()[s]
         except:
-            pass
+            ...
         for _1 in range(min(6, len(self.stack_values))):
             s = 'R' + str(_1)
             try:
@@ -2235,14 +2067,19 @@ class Scientific:
 
     def show_stack(self) -> None:
         '''Display the stack values.'''
-        #  out_str = ''
         this_str = ''
-        this_str += f' E: {self.my_entry.get()}'
+        x = f' E: {self.my_entry.get()}'
+        lines = 1
+        len_x: int = len(x)
+        this_str += x
         for _1 in range(len(self.stack_values)):
-            this_str += f'\nR{_1}: '
+            x = f'\nR{_1}'
             for _2 in range(4):
-                this_str += f'{self.stack_values[_1][_2]}: '
-        popup_message.show(title='Stack', message=this_str[:-1], alignment=LEFT)
+                x += f': {self.stack_values[_1][_2]}'
+            len_x = max(len(x), len_x)
+            this_str += x
+            lines += 1
+        popup_message.show(title='Stack', message=this_str, alignment=LEFT, use_text_box=True, m_width=len_x, m_height=lines)
 
     def display_stack(self) -> None:
         '''Update the stack.'''
@@ -2265,14 +2102,14 @@ class Scientific:
             if uom_start > -1:
                 ''' Units of measure are coloured green.'''
                 for x in range(uom_start, uom_start + uom_len):
-                    s_s = '1.0 linestart+' + str(uom_start) + 'c'
-                    s_e = '1.0 linestart+' + str(uom_start + uom_len) + 'c'
+                    s_s = f'1.0 linestart+{uom_start}c'
+                    s_e = f'1.0 linestart+{uom_start + uom_len}c'
                     text_field.tag_add('green', s_s, s_e)
                     text_field.tag_config('green', foreground='green')
                     #  Units powers are offset up by 4 and reduced in size by 3 pixels.
                     if '0123456789-./'.find(curr_str[x : x+1]) > -1:
-                        s_s = '1.0 linestart+' + str(x) + 'c'
-                        s_e = '1.0 linestart+' + str(x + 1) + 'c'
+                        s_s = f'1.0 linestart+{x}c'
+                        s_e = f'1.0 linestart+{x + 1}c'
                         text_field.tag_add('power', s_s, s_e)
                         text_field.tag_config('power', offset='+4')
                         f = text_field.cget('font')
@@ -2282,8 +2119,19 @@ class Scientific:
                         #  NOTE: font.cget('size') returns pixel height as positive, but it needs to be negative
                         #  to set size to pixels. Setting font size to positive number uses points.
             if self.settings_dict['format_type'] == self.DisplayFormat.FORMAT_WORD:
-                text_widget_highlight.add(text_field, the_text='point', highlight_name='point', fg_color='blue', bg_color='lightyellow')
-                text_widget_highlight.add(text_field, the_text='minus', highlight_name='minus', fg_color='blue', bg_color='lavenderblush')
+                s1 = text_field.get('1.0', 'end')
+                text_field.tag_delete('point')
+                text_field.tag_delete('minus')
+                if (p := s1.find('point ')) > -1:
+                    s_s = f'1.0 linestart+{p}c'
+                    s_e = f'1.0 linestart+{p+5}c'
+                    text_field.tag_add('point', s_s, s_e)
+                    text_field.tag_config('point', foreground='blue', background='lightyellow')
+                if (m := s1.find('minus ')) > -1:
+                    s_s = f'1.0 linestart+{m}c'
+                    s_e = f'1.0 linestart+{m+5}c'
+                    text_field.tag_add('minus', s_s, s_e)
+                    text_field.tag_config('minus', foreground='blue', background='lavenderblush')
 
         def clear_line(text_field: CTkTextbox, left_label: CTkLabel, right_label: CTkLabel) -> None:
             text_field.configure(state='normal')
@@ -2324,12 +2172,12 @@ class Scientific:
                 curr_str = self.format_number(real_part)
             else:
                 real_sign = ''
-                imag_sign = '+'
+                imag_sign = ' + '
                 if real_part < 0:
                     real_sign = '-'
                     real_part *= -1
                 if imag_part < 0:
-                    imag_sign = '-'
+                    imag_sign = ' - '
                     imag_part *= -1
                 real_part_s = self.format_number(real_part)
                 imag_part_s = self.format_number(imag_part)
@@ -2341,7 +2189,7 @@ class Scientific:
                     j_part = ' j'
                 else:
                     j_part = 'j'
-                if real_part == 0 and imag_sign == '+':
+                if real_part == 0 and imag_sign == ' + ':
                     imag_sign = ''
                 curr_str = f'{real_sign}{real_part_s}{imag_sign}{imag_part_s}{j_part}'
             uom_str = self.format_uom(unit_part)
@@ -2475,7 +2323,7 @@ class Scientific:
             tbase_num = '-' + tbase_num
         return tbase_num
 
-    def base_to_decimal(self, num_str: str, base: int) -> (bool, float):
+    def base_to_decimal(self, num_str: str, base: int) -> tuple[bool, float]:
         '''Convert base n number to decimal.'''
         converted_ok = True
         if not 2 <= base <= 62:
@@ -2577,7 +2425,10 @@ class Scientific:
                 str1 = '{:.' + str(self.settings_dict['significant_digits']) + 'e}'
             else:
                 str1 = '{:.' + str(self.settings_dict['significant_digits']) + 'f}'
-            str0 = str1.format(number_to_format)
+            try:
+                str0 = str1.format(number_to_format)
+            except OverflowError:
+                str0 = str(number_to_format)
             if str0.find('e') == -1:
                 str0 = str0.rstrip('0').rstrip('.')
             else:
@@ -2644,7 +2495,7 @@ class Scientific:
         for unit_part in unit_parts:
             numbers = ''
             letters = ''
-            numbers_found: Bool = False
+            numbers_found: bool = False
             for char in unit_part:
                 if char.isalpha():
                     if numbers_found:
@@ -2674,12 +2525,6 @@ class Scientific:
         return unit_dict, True
 
 
-    # def overbar(self):
-    #     popup_message.show(title='Overbar', message='To be implemented.')
-    #     t_ext = self.my_entry.get()
-
-        pass
-
     def my_enter(self) -> bool:
         '''Enter key pressed.'''
         self.save_stack()
@@ -2692,9 +2537,11 @@ class Scientific:
         entered_string = entered_string.replace('@', '@u').replace('#', '@c')
         res = entered_string.split('@')
         for i in res[1:]:
-            if i[:1] == 'c':
+            # if i[:1] == 'c':
+            if i.startswith('c'):
                 comment_string += i[1:]# + ' '
-            else:
+            # if i[:1] == 'u':
+            if i.startswith('u'):
                 unit_string += i[1:] + ' '
         entered_string = res[0]
         if comment_string:
@@ -2719,7 +2566,8 @@ class Scientific:
             self.clear_myentry()
         else:
             prefix = entered_string[:2].lower()
-            if (prefix := entered_string[:2].lower()) in '0b0o0d0h0r0x&b&o&d&h&r&x':
+            if prefix in '0b0o0d0h0r0x&b&o&d&h&r&x':
+            # if (prefix := entered_string[:2].lower()) in '0b0o0d0h0r0x&b&o&d&h&r&x':
                 match prefix:
                     case '0b' | '&b':
                         entered_string = entered_string[2:] + '_2'
@@ -2770,7 +2618,7 @@ class Scientific:
                 self.stack_values.insert(0, [float(x[0]) + float(x[1]) / 60 + float(x[2]) / 3600, 0.0, '', {}])
                 self.clear_myentry()
             elif entered_string.find(';') > -1: #  Sexagesimal number
-                (err_value, ret_value) = sexagesimal_to_float(entered_string, self.settings_dict['significant_digits'])
+                [err_value, ret_value] = sexagesimal_to_float(entered_string, self.settings_dict['significant_digits'])
                 match err_value:
                     case 0:
                         if len(self.stack_values) == 10:
@@ -2823,7 +2671,7 @@ class Scientific:
                         self.stack_values[0][0] = new_value
                         self.clear_myentry()
                     else:
-                        popup_message.show(leading_part + entered_base, message=' something wrong.')
+                        popup_message.show(leading_part + str(entered_base), message=' something wrong.')
                         return
             elif entered_string.find('j)') != -1 or entered_string.find('i)') != -1:  #  We have a complex number
                 entered_string = entered_string.replace('i)', 'j)')
@@ -3646,7 +3494,7 @@ class Scientific:
                 self.stack_values[0] = [(asin(self.stack_values[0][0] / sqrt(2)) - pi / 4) * self.radians_conv,
                                         0.0, '', {}]
             else:
-                popup_message.show(title=acas, message='Value must be from -\u221a2 to \u221a2')
+                popup_message.show(title='acas', message='Value must be from -\u221a2 to \u221a2')
                 return
         else: #  complex
             z = complex(self.stack_values[0][0], self.stack_values[0][1])
@@ -3819,10 +3667,97 @@ class Scientific:
                 self.stack_values[0][3][key] = value * -1
         self.display_stack()
 
-    def my_power_e(self) -> None:
-        '''Calculate power of e
+    # def my_power_e(self) -> None:
+    #     '''Calculate power of e
+    #
+    #     Calculates e to the power of the item in R0.
+    #
+    #     Parameters:
+    #
+    #     Returns:
+    #         Nothing
+    #     '''
+    #     if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
+    #         self.my_entry.insert('end', 'e**')
+    #         return
+    #     if not self.standardise_stack():
+    #         return
+    #     if self.stack_values[0][1] == 0:
+    #         if -709 <= self.stack_values[0][0] <= 709:
+    #             self.save_stack()
+    #             self.stack_values[0][0] = e ** self.stack_values[0][0]
+    #         else:
+    #             popup_message.show(title='exp', message='value must be from -709 to 709')
+    #             return
+    #     else:
+    #         z = complex(self.stack_values[0][0], self.stack_values[0][1])
+    #         z = c_exp(z)
+    #         self.save_stack()
+    #         self.stack_values[0] = [z.real, z.imag, '', {}]
+    #     self.display_stack()
+    #
+    # def my_power_10(self) -> None:
+    #     '''Calculate power of 10
+    #
+    #     Calculates the power of 10 of the item in R0.
+    #
+    #     Parameters:
+    #
+    #     Returns:
+    #         Nothing
+    #     '''
+    #     if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
+    #         self.my_entry.insert('end', '10**')
+    #         return
+    #     if not self.standardise_stack():
+    #         return
+    #     if self.stack_values[0][1] == 0:
+    #         if self.stack_values[0][0] > 308:
+    #             popup_message.show(title='power10', message='value must be <= 308')
+    #             return
+    #         else:
+    #             self.save_stack()
+    #             self.stack_values[0][0] = 10 ** self.stack_values[0][0]
+    #     else:
+    #         z = c_log(10) * (complex(self.stack_values[0][0], self.stack_values[0][1]))
+    #         z = c_exp(z)
+    #         self.save_stack()
+    #         self.stack_values[0] = [z.real, z.imag, '', {}]
+    #     self.display_stack()
+    #
+    # def my_power_2(self) -> None:
+    #     '''Calculate power of 2
+    #
+    #     Calculates the power of 2 of the item in R0.
+    #
+    #     Parameters:
+    #
+    #     Returns:
+    #         Nothing
+    #     '''
+    #     if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
+    #         self.my_entry.insert('end', '2**')
+    #         return
+    #     if not self.standardise_stack():
+    #         return
+    #     if self.stack_values[0][1] == 0:
+    #         if self.stack_values[0][0] > 308:
+    #             popup_message.show(title='power2', message='value must be <= 308')
+    #             return
+    #         else:
+    #             self.save_stack()
+    #             self.stack_values[0][0] = 2 ** self.stack_values[0][0]
+    #     else:
+    #         z = c_log(2) * (complex(self.stack_values[0][0], self.stack_values[0][1]))
+    #         z = c_exp(z)
+    #         self.save_stack()
+    #         self.stack_values[0] = [z.real, z.imag, '', {}]
+    #     self.display_stack()
 
-        Calculates e to the power of the item in R0.
+    def my_power_val(self, power_value: int | float | str) -> None:
+        '''Calculate powers
+
+        Calculates the power of {other_parm} of the item in R0.
 
         Parameters:
 
@@ -3830,77 +3765,24 @@ class Scientific:
             Nothing
         '''
         if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
-            self.my_entry.insert('end', 'e**')
+            self.my_entry.insert('end', str(power_value) + '**')
             return
         if not self.standardise_stack():
             return
-        if self.stack_values[0][1] == 0:
-            if -709 <= self.stack_values[0][0] <= 709:
-                self.save_stack()
-                self.stack_values[0][0] = e ** self.stack_values[0][0]
-            else:
-                popup_message.show(title='exp', message='value must be from -709 to 709')
-                return
-        else:
-            z = complex(self.stack_values[0][0], self.stack_values[0][1])
-            z = c_exp(z)
-            self.save_stack()
-            self.stack_values[0] = [z.real, z.imag, '', {}]
-        self.display_stack()
-
-    def my_power_10(self) -> None:
-        '''Calculate power of 10
-
-        Calculates the power of 10 of the item in R0.
-
-        Parameters:
-
-        Returns:
-            Nothing
-        '''
-        if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
-            self.my_entry.insert('end', '10**')
-            return
-        if not self.standardise_stack():
-            return
-        if self.stack_values[0][1] == 0:
-            if self.stack_values[0][0] > 308:
-                popup_message.show(title='power10', message='value must be <= 308')
-                return
-            else:
-                self.save_stack()
-                self.stack_values[0][0] = 10 ** self.stack_values[0][0]
-        else:
-            z = c_log(10) * (complex(self.stack_values[0][0], self.stack_values[0][1]))
-            z = c_exp(z)
-            self.save_stack()
-            self.stack_values[0] = [z.real, z.imag, '', {}]
-        self.display_stack()
-
-    def my_power_2(self) -> None:
-        '''Calculate power of 2
-
-        Calculates the power of 2 of the item in R0.
-
-        Parameters:
-
-        Returns:
-            Nothing
-        '''
-        if len(self.my_entry.get()) > 0 and self.my_entry.get()[0] == '=':
-            self.my_entry.insert('end', '2**')
-            return
-        if not self.standardise_stack():
-            return
+        if power_value == 'e':
+            power_value = e
         if self.stack_values[0][1] == 0:
             if self.stack_values[0][0] > 308:
                 popup_message.show(title='power2', message='value must be <= 308')
                 return
             else:
                 self.save_stack()
-                self.stack_values[0][0] = 2 ** self.stack_values[0][0]
+                self.stack_values[0][0] = power_value ** self.stack_values[0][0]
         else:
-            z = c_log(2) * (complex(self.stack_values[0][0], self.stack_values[0][1]))
+            z = c_log(power_value) * (complex(self.stack_values[0][0], self.stack_values[0][1]))
+            if z.real > 709 or z.imag > 709:
+                popup_message.show(title='Complex exponent', message='Value > 709')
+                return
             z = c_exp(z)
             self.save_stack()
             self.stack_values[0] = [z.real, z.imag, '', {}]
@@ -4138,14 +4020,25 @@ class Scientific:
         self.save_stack()
         if self.stack_values[1][1] == 0 and self.stack_values[0][1] == 0:
             power = self.stack_values[0][0]
-            self.stack_values[0][0] = self.stack_values[1][0] ** power
+            op = self.stack_values[1][0]
+            ans = op ** power
+            if op < 0:
+                if power == int(power):
+                    self.stack_values[0][0] = ans
+                else:
+                    self.stack_values[0][0] = ans.real
+                    self.stack_values[0][1] = ans.imag
+            else:
+                self.stack_values[0][0] = ans
             self.stack_values[0][3] = self.stack_values[1][3].copy()
             for key, value in self.stack_values[0][3].items():
                 self.stack_values[0][3][key] = int(value * power)
         else:
             z1 = complex(self.stack_values[0][0], self.stack_values[0][1])
             z2 = complex(self.stack_values[1][0], self.stack_values[1][1])
+            # print(z1, z2)
             z = c_exp(z1 * c_log(z2))
+            # print(z)
             self.stack_values[0] = [z.real, z.imag, '', {}]
         self.stack_values.pop(1)
         self.display_stack()
@@ -4375,15 +4268,14 @@ class Scientific:
         path_info = (f'my_cwd={getcwd()}\nmy_path={dirname(realpath(argv[0]))}\n'
                      f'argv[0]={argv[0].replace('\\\\','\\')}\n'
                      f'__file__={__file__}\n'
-                     f'my_file_path={first_bit.my_file_path}\n'
-                     f'my_file_type={first_bit.what_i_am}')
+                     f'my_file_path={first_bit.my_file_path}')
         popup_message.show(title='File and Path info', message=path_info, multi_line=True, alignment=LEFT)
 
 
 class Finance:
     '''Financial functions'''
 
-    def __init__(self, my_frame):
+    def __init__(self, my_frame: CTkFrame):
         self.my_frame = my_frame
         self.calculation_type = IntVar()
         self.rb1 = CTkRadioButton(self.my_frame,
@@ -4541,7 +4433,7 @@ class Finance:
 class Statistics:
     '''Statistics functions'''
 
-    def __init__(self, my_frame):
+    def __init__(self, my_frame: CTkFrame):
         self.my_frame = my_frame
         self.previous_modes: str = ''
         self.data_entry = CTkEntry(self.my_frame)
@@ -4671,8 +4563,12 @@ class Statistics:
         if len(self.previous_modes) > 0:
             app.scientific.other_equals(self.previous_modes)
             self.previous_modes = ''
-        equation_string = ('S_Num=' + self.num_items.get() + ';S_Sum=' + self.sum_items.get() +
-                           ';S_Mean=' + self.mean_items.get())
+        equation_string = ('S_Num='
+                           + self.num_items.get()
+                           + ';S_Sum='
+                           + self.sum_items.get()
+                           + ';S_Mean='
+                           + self.mean_items.get())
         self.previous_modes = 'S_Num=\'\';S_Sum=\'\';S_Mean=\'\''
         if len(modes) == 1:
             equation_string += ';S_Mode=' + self.mode_items.get()
@@ -4719,7 +4615,7 @@ class Statistics:
 class Converter:
     '''Conversion functions'''
 
-    def __init__(self, my_frame):
+    def __init__(self, my_frame: CTkFrame):
         self.my_frame = my_frame
         self.units_dictionary: dict = None
         self.input_field = CTkEntry(master=self.my_frame)
@@ -4888,13 +4784,13 @@ class Converter:
                 case '\u00B0Celsius':
                     temp_value = self.from_value
                 case '\u00B0Kelvin':
-                    temp_value = self.from_value - 273.15
+                    temp_value = self.from_value-273.15
                 case '\u00B0Fahrenheit':
-                    temp_value = (self.from_value - 32) * 5 / 9
+                    temp_value = (self.from_value-32)*5/9
                 case '\u00B0Rankine':
-                    temp_value = (self.from_value - 491.67) * 5 / 9
+                    temp_value = (self.from_value-491.67)*5/9
                 case '\u00B0Reamur':
-                    temp_value = self.from_value * 5 / 4
+                    temp_value = self.from_value*5/4
                 case _:
                     temp_value = 0
             if temp_value < -273.15:
@@ -4906,19 +4802,19 @@ class Converter:
                 case '\u00B0Celsius':
                     self.to_value = temp_value
                 case '\u00B0Kelvin':
-                    self.to_value = temp_value + 273.15
+                    self.to_value = temp_value+273.15
                 case '\u00B0Fahrenheit':
-                    self.to_value = temp_value * 9 / 5 + 32
+                    self.to_value = temp_value*9/5 + 32
                 case '\u00B0Rankine':
-                    self.to_value = (temp_value * 9 / 5) + 491.67
+                    self.to_value = (temp_value*9/5) + 491.67
                 case '\u00B0Reamur':
-                    self.to_value = temp_value * 4 / 5
+                    self.to_value = temp_value*4/5
                 case _:
                     self.to_value = 0
         else:
             self.to_value = float(
-                self.from_value * self.units_dictionary[self.from_factor] / self.units_dictionary[self.to_factor])
-        format_str = '{:.' + str(app.scientific.settings_dict['significant_digits']) + 'g}'
+                self.from_value*self.units_dictionary[self.from_factor]/self.units_dictionary[self.to_factor])
+        format_str = '{:.'+str(app.scientific.settings_dict['significant_digits']) + 'g}'
         self.output_field.replace_text(format_str.format(self.to_value))
 
     def set_button_text(self, bt, txt) -> None:
@@ -5164,11 +5060,11 @@ class Converter:
             Nothing
         '''
         self.units_dictionary = {'m/s': 1,
-                                 'km/h': 27 / 99,
+                                 'km/h': 27/99,
                                  'mph': 0.44704,
                                  'cm/s': .01,
                                  'fps': .3048,
-                                 'knot': 1852 / 3600}
+                                 'knot': 1852/3600}
         self.setup_conversion_menu()
 
     def volume_conversion(self) -> None:
@@ -5181,7 +5077,7 @@ class Converter:
         '''
         self.units_dictionary = {'m\N{SUPERSCRIPT THREE}': 1,
                                  'l': 0.001,
-                                 'cubic yard': 0.9144 ** 3,
+                                 'cubic yard': 0.9144**3,
                                  'ukgal': 0.00454609,
                                  'usgal': 0.00378541}
         self.setup_conversion_menu()
@@ -5226,32 +5122,32 @@ class Converter:
                                  '-1': '',
                                  'KB': 1000,
                                  'MB': 1000000,
-                                 'GB': 10 ** 9,
-                                 'TB': 10 ** 12,
-                                 'PB': 10 ** 15,
-                                 'EB': 10 ** 18,
-                                 'ZB': 10 ** 21,
-                                 'YB': 10 ** 24,
-                                 'RB': 10 ** 27,
-                                 'QB': 10 ** 30,
+                                 'GB': 10**9,
+                                 'TB': 10**12,
+                                 'PB': 10**15,
+                                 'EB': 10**18,
+                                 'ZB': 10**21,
+                                 'YB': 10**24,
+                                 'RB': 10**27,
+                                 'QB': 10**30,
                                  '-2': '',
                                  'KiB': 1024,
-                                 'MiB': 1024 * 1024,
-                                 'GiB': 1024 ** 3,
-                                 'TiB': 1024 ** 4,
-                                 'PiB': 1024 ** 5,
-                                 'EiB': 1024 ** 6,
-                                 'ZiB': 1024 ** 7,
-                                 'YiB': 1024 ** 8,
-                                 'RiB': 1024 ** 9,
-                                 'QiB': 1024 ** 10}
+                                 'MiB': 1024*1024,
+                                 'GiB': 1024**3,
+                                 'TiB': 1024**4,
+                                 'PiB': 1024**5,
+                                 'EiB': 1024**6,
+                                 'ZiB': 1024**7,
+                                 'YiB': 1024**8,
+                                 'RiB': 1024**9,
+                                 'QiB': 1024**10}
         self.setup_conversion_menu('Digital Storage')
 
 
 class Testing:
     '''Testing functions'''
 
-    def __init__(self, my_frame):
+    def __init__(self, my_frame: CTkFrame):
         self.my_frame = my_frame
         self.month_number: IntVar = IntVar()
         self.month_name_1: StringVar = StringVar()
@@ -5567,7 +5463,7 @@ class App(CTk):
         self.my_tabview: CTkTabview = ''
         self.widget_dict: dict = {}
         self.format_menu: int = 0
-        self.app_title: str = f'KevCalc v{str(CALC_VERSION)}.{str(CALC_SUBVERSION)}: python {version_info[0]}.{version_info[1]}'
+        self.app_title: str = f'KevCalc v{str(CALC_VERSION)}.{str(CALC_SUBVERSION)}: python {version_info[0]}.{version_info[1]}.{version_info[2]}'
         self.config(cursor='arrow')
         self.title(self.app_title)
         self.protocol('WM_DELETE_WINDOW', lambda: self.exit_this())
@@ -5616,7 +5512,9 @@ class App(CTk):
         self.bind('<Control-Key-6>', lambda event: self.control_pressed('6'))  #  Tab 5
         self.bind('<F1>', lambda event: app.helping.show_help('General'))
         seed()
-        self.iconbitmap(r'calculator' + str(randint(0, 3)) + r'.ico')
+        image_path = path.dirname(abspath(__file__)) + r'\icons\calculator' + str(randint(0, 3)) + '.ico'
+        self.iconbitmap(image_path)
+        # self.iconbitmap(r'icons\calculator' + str(randint(0, 3)) + r'.ico')
         self.helping: Helping = Helping()
 
     def set_transparent(self):
@@ -5625,7 +5523,7 @@ class App(CTk):
             self.transparent = False
             app.after_cancel(self.t)
         else:
-            app.attributes('-alpha', 0.1)
+            app.attributes('-alpha', 0.2)
             self.transparent = True
             self.t = app.after(10000, lambda: self.set_transparent())
 
@@ -5668,7 +5566,7 @@ class App(CTk):
                 self.scientific.restore_stack()
             case '/':
                 print('/')
-                pass
+                ...
             case '0':
                 app.geometry('+100+100')
             case '1':
@@ -5754,7 +5652,7 @@ class App(CTk):
                         s = self.clipboard_get()
                         app.scientific.my_entry.insert('end', s)
                     except:  #  Don't actually care if the clipboard is empty
-                        pass
+                        ...
 
         return inner
 
@@ -5967,7 +5865,7 @@ class App(CTk):
         -------
 
         '''
-        self.title(self.app_title + datetime.now().strftime(' %d.%m.%Y %H:%M:%S'))
+        self.title(f"({platform.system()}) {self.app_title} {datetime.now().strftime(' %d.%m.%Y %H:%M:%S')}")
         delay = datetime.now().second
         delay = 5 - (delay % 5)
         self.self_after = self.after(delay * 1000, self.show_time)
@@ -5975,7 +5873,7 @@ class App(CTk):
 
     def exit_this(self, force_exit: bool=True) -> None | Never:
         '''Exit from the app'''
-        self.update_registry()
+        self.update_config_files()
         self.after_cancel(self.self_after)  # stop the time update
         self.config(cursor='arrow')
         try:
@@ -5983,79 +5881,62 @@ class App(CTk):
             self.base_slider.slider_digits_window.destroy()
             self.my_message.message_window.destroy()
         except:
-            pass
+            ...
         ''' Why use app.after? Calling exit_this from the Menu was failing to get past the mainloop and end the program.
             exit_this called from an exit button, as a result of the protocol call and via the Esc key all ended OK.
             Changing self.destroy() to app.after(1, lambda: self.destroy()) has resolved the issue.
             No idea why this works.
         '''
         if force_exit is True:
-            self.after(1, lambda: self.destroy())
+            app.after(1, lambda: self.destroy())
         else:
             popup_message.show(title=None, message='Do you want to exit?', x_pos=0.6, y_pos=0.1, yesno = True)
-            if popup_message.get() == 'y':
+            if popup_message.get() == 'yes':
                 app.after(1, lambda: self.destroy())
 
 
-    def update_registry(self) -> None:
-        '''Update registry entries with stack, redo, variables etc.'''
-        try:
-            my_key = OpenKey(HKEY_CURRENT_USER, r'Software\KevCalc\Scientific', 0, KEY_WRITE)
-        except:
-            CreateKeyEx(HKEY_CURRENT_USER, r'Software\KevCalc\Scientific')
-            my_key = OpenKey(HKEY_CURRENT_USER, r'Software\KevCalc\Scientific', 0, KEY_WRITE)
-        pickled_out = pickle.dumps(app.scientific.stack_values)
-        SetValueEx(my_key, 'stack_values', 0, REG_BINARY, pickled_out)
-
-        pickled_out = pickle.dumps(app.scientific.redo_stack)
-        SetValueEx(my_key, 'redo_stack', 0, REG_BINARY, pickled_out)
-
+    def update_config_files(self) -> None:
+        '''Create JSON file with stack, redo, variables etc.
+        '''
+        if not path.exists('config'):
+            makedirs('config')
+        with open('config/stack_values.json', 'w') as f:
+            json.dump(app.scientific.stack_values, f)
+        with open('config/redo_stack.json', 'w') as f:
+            json.dump(app.scientific.redo_stack, f)
         geo = app.winfo_geometry().replace('+', 'x').split('x')
         left = int(geo[2])
         top = int(geo[3])
         app.scientific.settings_dict['left'] = left
         app.scientific.settings_dict['top'] = top
-        pickled_out = pickle.dumps(app.scientific.settings_dict)
-        SetValueEx(my_key, 'settings_dict', 0, REG_BINARY, pickled_out)
-
-        key_val = app.scientific.my_entry.get()
-        SetValueEx(my_key, 'entry_box', 0, REG_SZ, key_val)
-
-        pickled_out = pickle.dumps(app.scientific.equations)
-        SetValueEx(my_key, 'equations', 0, REG_BINARY, pickled_out)
-
-        pickled_out = pickle.dumps(app.scientific.created_vars)
-        SetValueEx(my_key, 'created_vars', 0, REG_BINARY, pickled_out)
-
-        CloseKey(my_key)
-
+        with open('config/settings_dict.json', 'w') as f:
+            json.dump(app.scientific.settings_dict, f)
+        with open('config/equations.json', 'w') as f:
+            json.dump(app.scientific.equations, f)
+        with open('config/created_vars.json', 'w') as f:
+            json.dump(app.scientific.created_vars, f)
+        with open('config/my_entry.json', 'w') as f:
+            json.dump(app.scientific.my_entry.get(), f)
 
 class FirstBit:
-    ''' Check the platform, version and if we are .exe or .py'''
+    ''' Check the platform and version.'''
 
     def __init__(self):
-        if platform.startswith('win') is False:
-            exit('This app is only supported on Windows.')
+        if not (platform.system() == 'Windows' or platform.system() == 'Linux'):
+            exit('This app is only supported on Windows and Linux.')
         if version_info < (PYTHON_MAJOR_VERSION, PYTHON_MINOR_VERSION):
             exit('You MUST be using Python v' + str(PYTHON_MAJOR_VERSION) +
                  '.' + str(PYTHON_MINOR_VERSION) + ' or greater.')
+        self.my_file_path, self.my_file_name = path.split(argv[0].replace('\\\\', '\\'))
 
-        try:
-            if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
-                self.what_i_am = 'bundled app'
-                self.my_file_path = sys._MEIPASS.rsplit('\\', 1)[0]
-        except:
-            self.my_file_path, self.my_file_name = path.split(argv[0].replace('\\\\', '\\'))
-            self.what_i_am = 'Python script'
+    def activate_window(self):
         '''
-        When running the Calculator, keyboard focus stays with IDLE even though the Calculator window
-        has focus. So, until the Mouse is clicked in the Calculator window, keyboard strokes go to
-        IDLE. This bit presses and releases the Shift key, which forces focus to the Calculator.
+        When running the Calculator, keyboard focus doesn't pass to the Calculator window.
+        So, until the Mouse is clicked in the Calculator window, keyboard strokes go to the
+        development environment, IDLE, PyCharm, VS Code. This bit sends the shift key which
+        forces focus to the Calculator. Currently only works on Windows.
         '''
-        Shiftkey = 0x10  #  VirtualKey Code for Shift
-        win32api.keybd_event(Shiftkey, 0, 0, 0)  #  press the key
-        sleep(0.1)
-        win32api.keybd_event(Shiftkey, 0, 0x2, 0)  #  release the key
+        send_key('shift')
 
     def check_state(self):
         if app.state() == 'withdrawn':
@@ -6063,17 +5944,17 @@ class FirstBit:
             app.deiconify()
 
 if __name__ == '__main__':
-    app: App = App()
+    app = App()
     popup_message = PopupMessage(app)
-    text_widget_link = TextWidgetLink()
-    text_widget_highlight = TextWidgetHighlight()
-    first_bit: FirstBit = FirstBit()
+    first_bit = FirstBit()
     app.create_objects()
     app.setup_menu_items()
     app.bind('<Escape>', lambda e: app.exit_this(False))
     app.bind('<Control-Z>', lambda e: app.scientific.restore_stack())
-    app.after(100, lambda: app.scientific.my_entry.focus_force())
-    #  Sometimes after pressing Shift-F10, the app window fails to appear.
-    #  This to try and fix it.
+    #  Sometimes the app window fails to appear.
+    #  This is to try and fix it.
     app.after(250, lambda: first_bit.check_state())
+    app.after(350, lambda: app.scientific.my_entry.focus_force())
+    # app.after(400, lambda: first_bit.activate_window())
+    first_bit.activate_window()
     app.mainloop()
